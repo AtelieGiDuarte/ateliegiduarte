@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "titulo": "WhatsApp Video 2026-07-12 at 18.33.34",
+    "descricao": "Topo de Bolo",
+    "arquivo": "videos/whatsapp-video-2026-07-12-at-18.33.34.mp4",
+    "duracao": 15
+  },
+  {
+    "titulo": "WhatsApp Video 2026-07-12 at 19.31.36",
+    "descricao": "Caixa Canudo",
+    "arquivo": "videos/whatsapp-video-2026-07-12-at-19.31.36.mp4",
+    "duracao": 25
+  }
+]
