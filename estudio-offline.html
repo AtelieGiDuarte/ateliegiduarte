@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estúdio · Ateliê Gi Duarte</title>
+<link rel="stylesheet" href="estilo.css">
+<style>
+  .passo{background:var(--panel);border:1px solid var(--linha);border-left:2px solid var(--bronze);border-radius:3px;padding:18px 22px;margin-bottom:28px}
+  .passo p{margin:0 0 6px;font-size:14px;color:#c9bfb2;line-height:1.6}
+  .passo p:last-child{margin:0}
+  .passo code{font-family:var(--mono);font-size:12px;color:var(--bronze);background:var(--ink);padding:2px 6px;border-radius:2px}
+  .pesado{border-color:var(--perigo)!important}
+  .alerta{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--perigo)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="topo">
+    <div>
+      <p class="olho">Estúdio · roda no seu computador</p>
+      <h1>Montar a <em>exibição</em></h1>
+    </div>
+    <div class="topo-acoes">
+      <button class="btn btn-solido" id="gerar">Baixar videos.json</button>
+    </div>
+  </header>
+
+  <div class="passo">
+    <p><b>Como funciona:</b> arraste aqui os mesmos vídeos que você vai colocar no repositório, escreva a descrição de cada um e baixe o <code>videos.json</code>.</p>
+    <p>Depois é só subir no GitHub: os arquivos de vídeo dentro da pasta <code>videos/</code> e o <code>videos.json</code> na raiz. O site se monta sozinho.</p>
+    <p>Esta página não envia nada pra lugar nenhum — os vídeos nem saem da sua máquina.</p>
+  </div>
+
+  <div class="solta" id="solta" tabindex="0" role="button" aria-label="Solte os vídeos aqui ou clique para escolher">
+    <h2>Solte os vídeos aqui</h2>
+    <p>Ou clique para escolher. Pode arrastar vários de uma vez.</p>
+    <p class="dica">O GitHub recusa arquivos acima de 100 MB</p>
+    <input type="file" id="arquivo" accept="video/*" multiple hidden>
+  </div>
+
+  <div class="secao-titulo">
+    <h2>No alinhamento</h2>
+    <span class="conta" id="conta"></span>
+  </div>
+
+  <div class="grade" id="grade"></div>
+</div>
+<div class="aviso" id="aviso"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const LIMITE = 100 * 1024 * 1024;
+let lista = [];
+
+function timecode(s){ s=Math.max(0,Math.floor(s||0));
+  const h=String(Math.floor(s/3600)).padStart(2,'0'), m=String(Math.floor((s%3600)/60)).padStart(2,'0');
+  return `${h}:${m}:${String(s%60).padStart(2,'0')}`; }
+function tamanho(b){ const mb=b/1048576; return mb>=1024?(mb/1024).toFixed(1)+' GB':Math.round(mb)+' MB'; }
+function escapar(t){ const d=document.createElement('div'); d.textContent=t??''; return d.innerHTML; }
+let avisoTimer;
+function avisar(txt,ruim=false){
+  const el=$('#aviso'); el.textContent=txt; el.classList.toggle('ruim',ruim); el.classList.add('mostra');
+  clearTimeout(avisoTimer); avisoTimer=setTimeout(()=>el.classList.remove('mostra'),3200);
+}
+function lerDuracao(file){
+  return new Promise(ok=>{
+    const v=document.createElement('video'); v.preload='metadata';
+    v.onloadedmetadata=()=>{ const d=v.duration; ok(isFinite(d)?d:0); };
+    v.onerror=()=>ok(0);
+    v.src=URL.createObjectURL(file);
+  });
+}
+// o GitHub não gosta de espaço nem acento no nome do arquivo
+function nomeLimpo(nome){
+  return nome.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+             .replace(/[^a-zA-Z0-9.\-_]/g,'-').replace(/-+/g,'-').toLowerCase();
+}
+
+async function receber(files){
+  const videos=[...files].filter(f=>f.type.startsWith('video/'));
+  if(!videos.length) return avisar('Só entram arquivos de vídeo aqui.', true);
+
+  for(const file of videos){
+    lista.push({
+      id: crypto.randomUUID(),
+      titulo: file.name.replace(/\.[^.]+$/,''),
+      descricao: '',
+      arquivoOriginal: file.name,
+      arquivo: 'videos/' + nomeLimpo(file.name),
+      duracao: await lerDuracao(file),
+      bytes: file.size,
+      url: URL.createObjectURL(file)
+    });
+  }
+  const pesados = videos.filter(f=>f.size>LIMITE).length;
+  avisar(pesados ? `${pesados} vídeo(s) acima de 100 MB — o GitHub vai recusar.` : 'Pronto. Agora escreva as descrições.', !!pesados);
+  pintar();
+}
+
+const solta=$('#solta'), inputArquivo=$('#arquivo');
+['dragenter','dragover'].forEach(e=>solta.addEventListener(e,ev=>{ev.preventDefault();solta.classList.add('ativa')}));
+['dragleave','drop'].forEach(e=>solta.addEventListener(e,ev=>{ev.preventDefault();solta.classList.remove('ativa')}));
+solta.addEventListener('drop',e=>receber(e.dataTransfer.files));
+solta.addEventListener('click',()=>inputArquivo.click());
+solta.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();inputArquivo.click();} });
+inputArquivo.addEventListener('change',()=>{ receber(inputArquivo.files); inputArquivo.value=''; });
+window.addEventListener('dragover',e=>e.preventDefault());
+window.addEventListener('drop',e=>{ e.preventDefault(); if(!solta.contains(e.target)) receber(e.dataTransfer.files); });
+
+function pintar(){
+  const grade=$('#grade');
+  $('#conta').textContent = lista.length ? `${String(lista.length).padStart(2,'0')} ${lista.length===1?'vídeo':'vídeos'}` : '';
+
+  if(!lista.length){
+    grade.innerHTML = `<div class="vazio" style="grid-column:1/-1"><strong>Nada no alinhamento ainda.</strong>Arraste o primeiro vídeo lá em cima.</div>`;
+    return;
+  }
+
+  grade.innerHTML = lista.map((v,i)=>`
+    <article class="card ${v.bytes>LIMITE?'pesado':''}" data-i="${i}">
+      <div class="tela">
+        <video src="${v.url}#t=1" preload="metadata" muted playsinline></video>
+        <span class="timecode">${timecode(v.duracao)}</span>
+      </div>
+      <div class="corpo">
+        <h3>${escapar(v.titulo)}</h3>
+        <p class="desc ${v.descricao?'':'vazia'}">${v.descricao?escapar(v.descricao):'Sem descrição — clique em Editar para escrever.'}</p>
+        <span class="meta">${escapar(v.arquivo)} · ${tamanho(v.bytes)}</span>
+        ${v.bytes>LIMITE?'<span class="alerta">Acima de 100 MB — comprima antes de subir</span>':''}
+        <div class="acoes">
+          <button class="btn editar">Editar</button>
+          <button class="btn btn-perigo tirar">Tirar</button>
+        </div>
+      </div>
+    </article>`).join('');
+
+  grade.querySelectorAll('.card').forEach(card=>{
+    const i=Number(card.dataset.i);
+    card.querySelector('.editar').onclick=()=>editar(card,i);
+    card.querySelector('.tirar').onclick=()=>{ lista.splice(i,1); pintar(); };
+  });
+}
+
+function editar(card,i){
+  const v=lista[i];
+  const corpo=card.querySelector('.corpo');
+  corpo.innerHTML=`
+    <input class="campo" id="t" value="${escapar(v.titulo)}" placeholder="Título do vídeo">
+    <textarea class="campo" id="d" rows="4" placeholder="O que essa pessoa precisa saber ao assistir?">${escapar(v.descricao)}</textarea>
+    <div class="acoes">
+      <button class="btn btn-solido salvar">Salvar</button>
+      <button class="btn cancelar">Cancelar</button>
+    </div>`;
+  corpo.querySelector('#d').focus();
+  corpo.querySelector('.cancelar').onclick=pintar;
+  corpo.querySelector('.salvar').onclick=()=>{
+    v.titulo=corpo.querySelector('#t').value.trim()||v.titulo;
+    v.descricao=corpo.querySelector('#d').value.trim();
+    avisar('Salvo.');
+    pintar();
+  };
+}
+
+$('#gerar').onclick=()=>{
+  if(!lista.length) return avisar('Arraste pelo menos um vídeo antes.', true);
+
+  const saida = lista.map(v=>({
+    titulo: v.titulo,
+    descricao: v.descricao,
+    arquivo: v.arquivo,
+    duracao: Math.round(v.duracao)
+  }));
+
+  const blob=new Blob([JSON.stringify(saida,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='videos.json';
+  a.click();
+
+  const renomear = lista.filter(v=>v.arquivo!=='videos/'+v.arquivoOriginal);
+  avisar(renomear.length
+    ? `videos.json baixado. Atenção: ${renomear.length} arquivo(s) precisam ser renomeados — os nomes certos estão no card.`
+    : 'videos.json baixado. Suba ele e a pasta videos/ no GitHub.');
+};
+
+pintar();
+</script>
+</body>
+</html>
