@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sala de Exibição · Ateliê Gi Duarte</title>
+<meta name="description" content="Sala de exibição privada do Ateliê Gi Duarte.">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="topo">
+    <div>
+      <p class="olho">Ateliê Gi Duarte</p>
+      <h1>Sala de <em>Exibição</em></h1>
+    </div>
+  </header>
+
+  <div id="conteudo">
+    <div class="vazio"><strong>Carregando…</strong>Só um instante.</div>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+
+function timecode(segundos) {
+  const s = Math.max(0, Math.floor(segundos || 0));
+  const h = String(Math.floor(s / 3600)).padStart(2, '0');
+  const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+  return `${h}:${m}:${String(s % 60).padStart(2, '0')}`;
+}
+function escapar(t) {
+  const d = document.createElement('div');
+  d.textContent = t ?? '';
+  return d.innerHTML;
+}
+
+let videos = [];
+
+function tocar(i) {
+  const v = videos[i];
+  const p = $('#player');
+  p.src = v.arquivo;
+  p.load();
+  $('#titulo').textContent = v.titulo;
+  $('#descricao').textContent = v.descricao || '';
+  $('#descricao').style.display = v.descricao ? 'block' : 'none';
+  document.querySelectorAll('.faixa').forEach((f, k) => f.classList.toggle('tocando', k === i));
+  location.hash = 'v' + (i + 1);
+}
+
+async function iniciar() {
+  try {
+    const r = await fetch('videos.json?v=' + Date.now());
+    videos = await r.json();
+  } catch {
+    videos = [];
+  }
+
+  if (!Array.isArray(videos) || !videos.length) {
+    $('#conteudo').innerHTML = `
+      <div class="vazio">
+        <strong>Ainda não tem nada em cartaz.</strong>
+        Os vídeos aparecem aqui assim que forem publicados.
+      </div>`;
+    return;
+  }
+
+  $('#conteudo').innerHTML = `
+    <div class="sala">
+      <section class="palco">
+        <video id="player" controls playsinline preload="metadata" controlsList="nodownload"></video>
+        <h2 id="titulo"></h2>
+        <p class="desc" id="descricao"></p>
+      </section>
+      <nav class="alinhamento" aria-label="Lista de vídeos">
+        ${videos.map((v, i) => `
+          <button class="faixa" data-i="${i}">
+            <span class="num">${String(i + 1).padStart(2, '0')}</span>
+            <span class="info">
+              <b>${escapar(v.titulo)}</b>
+              <span>${timecode(v.duracao)}</span>
+            </span>
+          </button>`).join('')}
+      </nav>
+    </div>`;
+
+  document.querySelectorAll('.faixa').forEach((f) =>
+    f.addEventListener('click', () => tocar(Number(f.dataset.i)))
+  );
+
+  // permite mandar o link já apontando pra um vídeo: ...github.io/ateliegiduarte/#v2
+  const alvo = parseInt((location.hash.match(/^#v(\d+)$/) || [])[1], 10);
+  tocar(alvo >= 1 && alvo <= videos.length ? alvo - 1 : 0);
+}
+
+iniciar();
+</script>
+</body>
+</html>
