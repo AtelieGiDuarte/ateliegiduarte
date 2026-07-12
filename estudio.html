@@ -172,12 +172,51 @@ async function conectar(t){
 }
 
 async function carregarPublicados(){
+  // le a verdade direto do repositorio, nao da pagina publicada
+  // (o GitHub Pages leva 1-2 min pra atualizar e serve cache velho)
+  estado('Lendo o repositorio…');
+  let arquivosReais = new Set();
+  let publicados = [];
+
   try{
-    const r=await fetch(`videos.json?v=${Date.now()}`);
-    const pub=await r.json();
-    lista=(Array.isArray(pub)?pub:[]).map(v=>({...v, publicado:true}));
-  }catch{ lista=[]; }
-  originais=lista.map(v=>v.arquivo);
+    const arvore = await api(`/repos/${DONO}/${REPO}/git/trees/${BRANCH}?recursive=1`);
+    arvore.tree.forEach(t=>{
+      if(t.type==='blob' && t.path.startsWith('videos/') && t.path!=='videos/.gitkeep')
+        arquivosReais.add(t.path);
+    });
+
+    const item = arvore.tree.find(t=>t.path==='videos.json');
+    if(item){
+      const blob = await api(`/repos/${DONO}/${REPO}/git/blobs/${item.sha}`);
+      const texto = decodeURIComponent(escape(atob(blob.content.replace(/\n/g,''))));
+      const dados = JSON.parse(texto);
+      if(Array.isArray(dados)) publicados = dados;
+    }
+  }catch(e){
+    estado('');
+    avisar('Nao consegui ler o repositorio: '+e.message, true);
+    return;
+  }
+
+  // so entra na lista o video cujo arquivo existe de verdade
+  const fantasmas = publicados.filter(v=>!arquivosReais.has(v.arquivo));
+  lista = publicados
+    .filter(v=>arquivosReais.has(v.arquivo))
+    .map(v=>({...v, publicado:true}));
+
+  // arquivo no repo que ninguem listou: recupera com o nome do arquivo
+  arquivosReais.forEach(path=>{
+    if(!lista.some(v=>v.arquivo===path)){
+      lista.push({
+        titulo: path.split('/').pop().replace(/\.[^.]+$/,''),
+        descricao:'', arquivo:path, duracao:0, publicado:true, orfao:true
+      });
+    }
+  });
+
+  originais = lista.map(v=>v.arquivo);
+  estado('');
+  if(fantasmas.length) avisar(`${fantasmas.length} video(s) estavam listados mas o arquivo nao existe mais. Tirei da lista — suba de novo.`, true);
   pintar();
 }
 
@@ -309,7 +348,10 @@ $('#publicar').onclick=async()=>{
 
     estado('Atualizando a lista…');
     progresso(Math.round(feito/etapas*100));
-    const json=lista.map(v=>({ titulo:v.titulo, descricao:v.descricao, arquivo:v.arquivo, duracao:v.duracao||0 }));
+    // so vai pro videos.json o que tem arquivo no repo ou acabou de subir agora
+    const json=lista
+      .filter(v=>v.publicado || novos.includes(v))
+      .map(v=>({ titulo:v.titulo, descricao:v.descricao, arquivo:v.arquivo, duracao:v.duracao||0 }));
     const blobJson=await api(`/repos/${DONO}/${REPO}/git/blobs`,{
       method:'POST',
       body:JSON.stringify({ content: JSON.stringify(json,null,2), encoding:'utf-8' })
