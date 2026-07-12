@@ -6,12 +6,25 @@
 <title>Estúdio · Ateliê Gi Duarte</title>
 <link rel="stylesheet" href="estilo.css">
 <style>
-  .passo{background:var(--panel);border:1px solid var(--linha);border-left:2px solid var(--bronze);border-radius:3px;padding:18px 22px;margin-bottom:28px}
-  .passo p{margin:0 0 6px;font-size:14px;color:#c9bfb2;line-height:1.6}
-  .passo p:last-child{margin:0}
-  .passo code{font-family:var(--mono);font-size:12px;color:var(--bronze);background:var(--ink);padding:2px 6px;border-radius:2px}
+  .chave{background:var(--panel);border:1px solid var(--linha);border-left:2px solid var(--bronze);border-radius:3px;padding:20px 22px;margin-bottom:32px}
+  .chave h3{font-family:var(--serif);font-weight:400;font-size:22px;margin:0 0 8px}
+  .chave p{margin:0 0 14px;font-size:13px;color:var(--mudo);line-height:1.6}
+  .chave a{color:var(--bronze)}
+  .chave code{font-family:var(--mono);font-size:12px;color:var(--bronze)}
+  .chave-linha{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .chave-linha .campo{flex:1;min-width:260px;font-family:var(--mono);font-size:12px}
+  .lembrar{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12px;color:var(--mudo)}
+  .lembrar input{accent-color:var(--bronze)}
+  .ligado{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--bronze)}
+  .ponto{width:7px;height:7px;border-radius:50%;background:var(--bronze);flex:none}
   .pesado{border-color:var(--perigo)!important}
   .alerta{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--perigo)}
+  .novo{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--bronze)}
+  .publicar{position:sticky;bottom:0;background:linear-gradient(to top,var(--ink) 55%,transparent);padding:26px 0 10px;margin-top:32px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .estado{font-family:var(--mono);font-size:11px;color:var(--mudo);margin-right:auto}
+  .barra-geral{height:2px;background:var(--linha);border-radius:999px;overflow:hidden;margin-bottom:10px}
+  .barra-geral span{display:block;height:100%;width:0;background:var(--bronze);transition:width .3s}
+  .oculto{display:none}
 </style>
 </head>
 <body>
@@ -19,84 +32,187 @@
 
   <header class="topo">
     <div>
-      <p class="olho">Estúdio · roda no seu computador</p>
+      <p class="olho">Estúdio · Ateliê Gi Duarte</p>
       <h1>Montar a <em>exibição</em></h1>
     </div>
     <div class="topo-acoes">
-      <button class="btn btn-solido" id="gerar">Baixar videos.json</button>
+      <a class="btn" href="./" target="_blank" rel="noopener">Ver o site</a>
     </div>
   </header>
 
-  <div class="passo">
-    <p><b>Como funciona:</b> arraste aqui os mesmos vídeos que você vai colocar no repositório, escreva a descrição de cada um e baixe o <code>videos.json</code>.</p>
-    <p>Depois é só subir no GitHub: os arquivos de vídeo dentro da pasta <code>videos/</code> e o <code>videos.json</code> na raiz. O site se monta sozinho.</p>
-    <p>Esta página não envia nada pra lugar nenhum — os vídeos nem saem da sua máquina.</p>
+  <div class="chave" id="chave">
+    <h3>Sua chave de acesso</h3>
+    <p>
+      Cole o token do GitHub com permissão <code>Contents: Read and write</code> no repositório <code>ateliegiduarte</code>.
+      Ele fica guardado só no seu navegador — não entra no código, não sobe pro site, ninguém mais enxerga.
+      <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Gerar um token</a>
+    </p>
+    <div class="chave-linha">
+      <input class="campo" id="token" type="password" placeholder="github_pat_..." autocomplete="off" spellcheck="false">
+      <button class="btn btn-solido" id="conectar">Conectar</button>
+    </div>
+    <label class="lembrar">
+      <input type="checkbox" id="lembrar" checked>
+      Lembrar neste navegador — use só no seu computador
+    </label>
   </div>
 
-  <div class="solta" id="solta" tabindex="0" role="button" aria-label="Solte os vídeos aqui ou clique para escolher">
-    <h2>Solte os vídeos aqui</h2>
-    <p>Ou clique para escolher. Pode arrastar vários de uma vez.</p>
-    <p class="dica">O GitHub recusa arquivos acima de 100 MB</p>
-    <input type="file" id="arquivo" accept="video/*" multiple hidden>
+  <div class="chave oculto" id="conectado">
+    <div class="chave-linha">
+      <span class="ligado"><span class="ponto"></span> Conectado a <span id="nome-repo"></span></span>
+      <button class="btn" id="desconectar" style="margin-left:auto">Desconectar</button>
+    </div>
   </div>
 
-  <div class="secao-titulo">
-    <h2>No alinhamento</h2>
-    <span class="conta" id="conta"></span>
-  </div>
+  <div id="painel" class="oculto">
+    <div class="solta" id="solta" tabindex="0" role="button" aria-label="Solte os vídeos aqui ou clique para escolher">
+      <h2>Solte os vídeos aqui</h2>
+      <p>Ou clique para escolher. Pode arrastar vários de uma vez.</p>
+      <p class="dica">Até 50 MB por vídeo — acima disso o GitHub engasga</p>
+      <input type="file" id="arquivo" accept="video/*" multiple hidden>
+    </div>
 
-  <div class="grade" id="grade"></div>
+    <div class="secao-titulo">
+      <h2>No alinhamento</h2>
+      <span class="conta" id="conta"></span>
+    </div>
+
+    <div class="grade" id="grade"></div>
+
+    <div class="barra-geral oculto" id="barra"><span></span></div>
+    <div class="publicar">
+      <span class="estado" id="estado"></span>
+      <button class="btn btn-solido" id="publicar">Publicar no site</button>
+    </div>
+  </div>
 </div>
 <div class="aviso" id="aviso"></div>
 
 <script>
-const $ = (s) => document.querySelector(s);
-const LIMITE = 100 * 1024 * 1024;
-let lista = [];
+const DONO='AtelieGiDuarte', REPO='ateliegiduarte', BRANCH='main';
+const LIMITE=50*1048576, TETO=100*1048576;
+const $=(s)=>document.querySelector(s);
 
+let token='';
+let lista=[];
+let originais=[];
+
+/* ---------- utilidades ---------- */
 function timecode(s){ s=Math.max(0,Math.floor(s||0));
   const h=String(Math.floor(s/3600)).padStart(2,'0'), m=String(Math.floor((s%3600)/60)).padStart(2,'0');
   return `${h}:${m}:${String(s%60).padStart(2,'0')}`; }
-function tamanho(b){ const mb=b/1048576; return mb>=1024?(mb/1024).toFixed(1)+' GB':Math.round(mb)+' MB'; }
+function tamanho(b){ if(!b) return ''; const mb=b/1048576; return mb>=1024?(mb/1024).toFixed(1)+' GB':Math.round(mb)+' MB'; }
 function escapar(t){ const d=document.createElement('div'); d.textContent=t??''; return d.innerHTML; }
 let avisoTimer;
 function avisar(txt,ruim=false){
   const el=$('#aviso'); el.textContent=txt; el.classList.toggle('ruim',ruim); el.classList.add('mostra');
-  clearTimeout(avisoTimer); avisoTimer=setTimeout(()=>el.classList.remove('mostra'),3200);
+  clearTimeout(avisoTimer); avisoTimer=setTimeout(()=>el.classList.remove('mostra'), ruim?5500:3000);
+}
+const estado=(t)=>$('#estado').textContent=t;
+function progresso(p){
+  const b=$('#barra'); b.classList.toggle('oculto', p===null);
+  if(p!==null) b.querySelector('span').style.width=p+'%';
+}
+function nomeLimpo(n){
+  return n.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          .replace(/[^a-zA-Z0-9.\-_]/g,'-').replace(/-+/g,'-').toLowerCase();
 }
 function lerDuracao(file){
   return new Promise(ok=>{
     const v=document.createElement('video'); v.preload='metadata';
-    v.onloadedmetadata=()=>{ const d=v.duration; ok(isFinite(d)?d:0); };
+    v.onloadedmetadata=()=>ok(isFinite(v.duration)?v.duration:0);
     v.onerror=()=>ok(0);
     v.src=URL.createObjectURL(file);
   });
 }
-// o GitHub não gosta de espaço nem acento no nome do arquivo
-function nomeLimpo(nome){
-  return nome.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-             .replace(/[^a-zA-Z0-9.\-_]/g,'-').replace(/-+/g,'-').toLowerCase();
+async function paraBase64(file){
+  const buf=new Uint8Array(await file.arrayBuffer());
+  let s='', p=0x8000;
+  for(let i=0;i<buf.length;i+=p) s+=String.fromCharCode.apply(null, buf.subarray(i,i+p));
+  return btoa(s);
 }
 
+/* ---------- API do GitHub ---------- */
+async function api(caminho, opcoes={}){
+  const r=await fetch('https://api.github.com'+caminho,{
+    ...opcoes,
+    headers:{
+      'Authorization':'Bearer '+token,
+      'Accept':'application/vnd.github+json',
+      'X-GitHub-Api-Version':'2022-11-28',
+      ...(opcoes.headers||{})
+    }
+  });
+  if(!r.ok){
+    const e=await r.json().catch(()=>({}));
+    throw new Error(`${r.status} — ${e.message||'o GitHub recusou a chamada'}`);
+  }
+  return r.json();
+}
+
+/* ---------- conectar ---------- */
+async function conectar(t){
+  token=(t||'').trim();
+  if(!token) return avisar('Cole o token primeiro.', true);
+  estado('Verificando a chave…');
+  try{
+    await api(`/repos/${DONO}/${REPO}`);
+  }catch(e){
+    token=''; estado('');
+    localStorage.removeItem('chave-github');
+    return avisar('Chave recusada: '+e.message, true);
+  }
+  if($('#lembrar').checked) localStorage.setItem('chave-github', token);
+  $('#chave').classList.add('oculto');
+  $('#conectado').classList.remove('oculto');
+  $('#painel').classList.remove('oculto');
+  $('#nome-repo').textContent=`${DONO}/${REPO}`;
+  estado('');
+  await carregarPublicados();
+}
+
+async function carregarPublicados(){
+  try{
+    const r=await fetch(`videos.json?v=${Date.now()}`);
+    const pub=await r.json();
+    lista=(Array.isArray(pub)?pub:[]).map(v=>({...v, publicado:true}));
+  }catch{ lista=[]; }
+  originais=lista.map(v=>v.arquivo);
+  pintar();
+}
+
+$('#conectar').onclick=()=>conectar($('#token').value);
+$('#token').addEventListener('keydown',e=>{ if(e.key==='Enter') conectar($('#token').value); });
+$('#desconectar').onclick=()=>{ localStorage.removeItem('chave-github'); location.reload(); };
+
+/* ---------- receber vídeos ---------- */
 async function receber(files){
   const videos=[...files].filter(f=>f.type.startsWith('video/'));
   if(!videos.length) return avisar('Só entram arquivos de vídeo aqui.', true);
 
   for(const file of videos){
+    if(file.size>TETO){
+      avisar(`"${file.name}" tem ${tamanho(file.size)}. O GitHub recusa acima de 100 MB — comprima antes.`, true);
+      continue;
+    }
+    const arquivo='videos/'+nomeLimpo(file.name);
+    if(lista.some(v=>v.arquivo===arquivo)){
+      avisar(`"${file.name}" já está no alinhamento.`, true);
+      continue;
+    }
     lista.push({
-      id: crypto.randomUUID(),
-      titulo: file.name.replace(/\.[^.]+$/,''),
-      descricao: '',
-      arquivoOriginal: file.name,
-      arquivo: 'videos/' + nomeLimpo(file.name),
-      duracao: await lerDuracao(file),
-      bytes: file.size,
-      url: URL.createObjectURL(file)
+      titulo:file.name.replace(/\.[^.]+$/,''),
+      descricao:'',
+      arquivo,
+      duracao:Math.round(await lerDuracao(file)),
+      file,
+      bytes:file.size,
+      url:URL.createObjectURL(file),
+      publicado:false
     });
   }
-  const pesados = videos.filter(f=>f.size>LIMITE).length;
-  avisar(pesados ? `${pesados} vídeo(s) acima de 100 MB — o GitHub vai recusar.` : 'Pronto. Agora escreva as descrições.', !!pesados);
   pintar();
+  avisar('Escreva as descrições e clique em Publicar no site.');
 }
 
 const solta=$('#solta'), inputArquivo=$('#arquivo');
@@ -109,26 +225,27 @@ inputArquivo.addEventListener('change',()=>{ receber(inputArquivo.files); inputA
 window.addEventListener('dragover',e=>e.preventDefault());
 window.addEventListener('drop',e=>{ e.preventDefault(); if(!solta.contains(e.target)) receber(e.dataTransfer.files); });
 
+/* ---------- grade ---------- */
 function pintar(){
   const grade=$('#grade');
-  $('#conta').textContent = lista.length ? `${String(lista.length).padStart(2,'0')} ${lista.length===1?'vídeo':'vídeos'}` : '';
+  $('#conta').textContent=lista.length?`${String(lista.length).padStart(2,'0')} ${lista.length===1?'vídeo':'vídeos'}`:'';
 
   if(!lista.length){
-    grade.innerHTML = `<div class="vazio" style="grid-column:1/-1"><strong>Nada no alinhamento ainda.</strong>Arraste o primeiro vídeo lá em cima.</div>`;
+    grade.innerHTML=`<div class="vazio" style="grid-column:1/-1"><strong>Nada no alinhamento ainda.</strong>Arraste o primeiro vídeo lá em cima.</div>`;
     return;
   }
 
-  grade.innerHTML = lista.map((v,i)=>`
+  grade.innerHTML=lista.map((v,i)=>`
     <article class="card ${v.bytes>LIMITE?'pesado':''}" data-i="${i}">
       <div class="tela">
-        <video src="${v.url}#t=1" preload="metadata" muted playsinline></video>
+        <video src="${v.url||v.arquivo}#t=1" preload="metadata" muted playsinline></video>
         <span class="timecode">${timecode(v.duracao)}</span>
       </div>
       <div class="corpo">
         <h3>${escapar(v.titulo)}</h3>
         <p class="desc ${v.descricao?'':'vazia'}">${v.descricao?escapar(v.descricao):'Sem descrição — clique em Editar para escrever.'}</p>
-        <span class="meta">${escapar(v.arquivo)} · ${tamanho(v.bytes)}</span>
-        ${v.bytes>LIMITE?'<span class="alerta">Acima de 100 MB — comprima antes de subir</span>':''}
+        <span class="meta">${v.publicado?'no ar':'<span class="novo">a publicar</span>'}${v.bytes?' · '+tamanho(v.bytes):''}</span>
+        ${v.bytes>LIMITE?'<span class="alerta">Acima de 50 MB — o envio pode falhar</span>':''}
         <div class="acoes">
           <button class="btn editar">Editar</button>
           <button class="btn btn-perigo tirar">Tirar</button>
@@ -139,13 +256,15 @@ function pintar(){
   grade.querySelectorAll('.card').forEach(card=>{
     const i=Number(card.dataset.i);
     card.querySelector('.editar').onclick=()=>editar(card,i);
-    card.querySelector('.tirar').onclick=()=>{ lista.splice(i,1); pintar(); };
+    card.querySelector('.tirar').onclick=()=>{
+      if(lista[i].publicado && !confirm(`Tirar "${lista[i].titulo}" do site? Ao publicar, o arquivo sai do repositório.`)) return;
+      lista.splice(i,1); pintar();
+    };
   });
 }
 
 function editar(card,i){
-  const v=lista[i];
-  const corpo=card.querySelector('.corpo');
+  const v=lista[i], corpo=card.querySelector('.corpo');
   corpo.innerHTML=`
     <input class="campo" id="t" value="${escapar(v.titulo)}" placeholder="Título do vídeo">
     <textarea class="campo" id="d" rows="4" placeholder="O que essa pessoa precisa saber ao assistir?">${escapar(v.descricao)}</textarea>
@@ -158,34 +277,85 @@ function editar(card,i){
   corpo.querySelector('.salvar').onclick=()=>{
     v.titulo=corpo.querySelector('#t').value.trim()||v.titulo;
     v.descricao=corpo.querySelector('#d').value.trim();
-    avisar('Salvo.');
     pintar();
   };
 }
 
-$('#gerar').onclick=()=>{
-  if(!lista.length) return avisar('Arraste pelo menos um vídeo antes.', true);
+/* ---------- publicar: tudo num commit só ---------- */
+$('#publicar').onclick=async()=>{
+  const btn=$('#publicar');
+  const novos=lista.filter(v=>!v.publicado);
+  const apagados=originais.filter(a=>!lista.some(v=>v.arquivo===a));
 
-  const saida = lista.map(v=>({
-    titulo: v.titulo,
-    descricao: v.descricao,
-    arquivo: v.arquivo,
-    duracao: Math.round(v.duracao)
-  }));
+  if(!novos.length && !apagados.length &&
+     !confirm('Nenhum vídeo novo. Publicar assim mesmo, só pra atualizar títulos e descrições?')) return;
 
-  const blob=new Blob([JSON.stringify(saida,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='videos.json';
-  a.click();
+  btn.disabled=true;
+  const arvore=[];
+  const etapas=novos.length+1;
 
-  const renomear = lista.filter(v=>v.arquivo!=='videos/'+v.arquivoOriginal);
-  avisar(renomear.length
-    ? `videos.json baixado. Atenção: ${renomear.length} arquivo(s) precisam ser renomeados — os nomes certos estão no card.`
-    : 'videos.json baixado. Suba ele e a pasta videos/ no GitHub.');
+  try{
+    let feito=0;
+    for(const v of novos){
+      estado(`Enviando ${v.titulo} — ${feito+1} de ${novos.length}`);
+      progresso(Math.round(feito/etapas*100));
+      const blob=await api(`/repos/${DONO}/${REPO}/git/blobs`,{
+        method:'POST',
+        body:JSON.stringify({ content: await paraBase64(v.file), encoding:'base64' })
+      });
+      arvore.push({ path:v.arquivo, mode:'100644', type:'blob', sha:blob.sha });
+      feito++;
+    }
+
+    estado('Atualizando a lista…');
+    progresso(Math.round(feito/etapas*100));
+    const json=lista.map(v=>({ titulo:v.titulo, descricao:v.descricao, arquivo:v.arquivo, duracao:v.duracao||0 }));
+    const blobJson=await api(`/repos/${DONO}/${REPO}/git/blobs`,{
+      method:'POST',
+      body:JSON.stringify({ content: JSON.stringify(json,null,2), encoding:'utf-8' })
+    });
+    arvore.push({ path:'videos.json', mode:'100644', type:'blob', sha:blobJson.sha });
+    apagados.forEach(path=>arvore.push({ path, mode:'100644', type:'blob', sha:null }));
+
+    estado('Publicando…');
+    const ref=await api(`/repos/${DONO}/${REPO}/git/ref/heads/${BRANCH}`);
+    const base=await api(`/repos/${DONO}/${REPO}/git/commits/${ref.object.sha}`);
+    const tree=await api(`/repos/${DONO}/${REPO}/git/trees`,{
+      method:'POST',
+      body:JSON.stringify({ base_tree: base.tree.sha, tree: arvore })
+    });
+    const commit=await api(`/repos/${DONO}/${REPO}/git/commits`,{
+      method:'POST',
+      body:JSON.stringify({
+        message:`Exibicao: ${novos.length} novo(s), ${apagados.length} removido(s)`,
+        tree: tree.sha,
+        parents:[ref.object.sha]
+      })
+    });
+    await api(`/repos/${DONO}/${REPO}/git/refs/heads/${BRANCH}`,{
+      method:'PATCH',
+      body:JSON.stringify({ sha: commit.sha })
+    });
+
+    progresso(100);
+    estado('Publicado. O site atualiza em 1 a 2 minutos.');
+    avisar('Publicado! Daqui a 1 ou 2 minutos já aparece no link de exibição.');
+    lista.forEach(v=>{ v.publicado=true; v.file=null; });
+    originais=lista.map(v=>v.arquivo);
+    pintar();
+    setTimeout(()=>progresso(null),5000);
+
+  }catch(e){
+    progresso(null);
+    estado('');
+    avisar('Não publicou: '+e.message, true);
+  }finally{
+    btn.disabled=false;
+  }
 };
 
-pintar();
+const guardada=localStorage.getItem('chave-github');
+if(guardada) conectar(guardada);
 </script>
 </body>
 </html>
