@@ -196,6 +196,9 @@ h1 em{font-style:italic;color:var(--terracota)}
   /* no celular nada fica grudado nem com rolagem própria — a página inteira rola */
   .palco{position:static}
   .alinhamento{max-height:none;overflow:visible;padding-right:0}
+  /* garante que a lista venha depois da descrição, empilhada, sem espremer */
+  .faixa{min-height:56px}
+  .palco .desc{max-width:100%}
 }
 .palco{position:sticky;top:24px}
 .palco video{
