@@ -191,7 +191,12 @@ h1 em{font-style:italic;color:var(--terracota)}
 
 /* ---------- página de exibição ---------- */
 .sala{display:grid;grid-template-columns:1fr 320px;gap:30px;align-items:start;margin-top:40px}
-@media(max-width:900px){.sala{grid-template-columns:1fr}}
+@media(max-width:900px){
+  .sala{grid-template-columns:1fr}
+  /* no celular nada fica grudado nem com rolagem própria — a página inteira rola */
+  .palco{position:static}
+  .alinhamento{max-height:none;overflow:visible;padding-right:0}
+}
 .palco{position:sticky;top:24px}
 .palco video{
   width:100%;aspect-ratio:16/9;background:#2a2320;
